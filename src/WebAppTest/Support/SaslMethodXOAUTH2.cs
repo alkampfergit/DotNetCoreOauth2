@@ -15,6 +15,20 @@ namespace WebAppTest.Support
         /// <remarks>
         /// Creates a new XOAUTH2 SASL context.
         /// </remarks>
+        /// <param name="credentials">The user's credentials.</param>
+        /// <exception cref="System.ArgumentNullException">
+        /// <paramref name="credentials"/> is <c>null</c>.
+        /// </exception>
+        public SaslMethodXOAUTH2(NetworkCredential credentials) : base(credentials)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismOAuth2"/> class.
+        /// </summary>
+        /// <remarks>
+        /// Creates a new XOAUTH2 SASL context.
+        /// </remarks>
         /// <example>
         /// <code language="c#" source="Examples\OAuth2GMailExample.cs"/>
         /// <code language="c#" source="Examples\OAuth2ExchangeExample.cs"/>
@@ -56,7 +70,7 @@ namespace WebAppTest.Support
             get { return true; }
         }
 
-        public string BearerToken { get; private set; }
+        public String XOAUTH2 { get; private set; }
 
         /// <summary>
         /// Parse the server's challenge token and return the next challenge response.
@@ -83,28 +97,28 @@ namespace WebAppTest.Support
             if (IsAuthenticated)
                 return null;
 
-            BearerToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"user={Credentials.UserName}^Aauth=Bearer {Credentials.Password}^A^A"));
+            var authToken = Credentials.Password;
+            var userName = Credentials.UserName;
+            int index = 0;
 
-            //var authToken = Credentials.Password;
-            //var userName = Credentials.UserName;
-            //int index = 0;
-
-            //var buf = new byte[UserEquals.Length + userName.Length + AuthBearer.Length + authToken.Length + 3];
-            //for (int i = 0; i < UserEquals.Length; i++)
-            //    buf[index++] = (byte)UserEquals[i];
-            //for (int i = 0; i < userName.Length; i++)
-            //    buf[index++] = (byte)userName[i];
-            //buf[index++] = 1;
-            //for (int i = 0; i < AuthBearer.Length; i++)
-            //    buf[index++] = (byte)AuthBearer[i];
-            //for (int i = 0; i < authToken.Length; i++)
-            //    buf[index++] = (byte)authToken[i];
-            //buf[index++] = 1;
-            //buf[index++] = 1;
+            var buf = new byte[UserEquals.Length + userName.Length + AuthBearer.Length + authToken.Length + 3];
+            for (int i = 0; i < UserEquals.Length; i++)
+                buf[index++] = (byte)UserEquals[i];
+            for (int i = 0; i < userName.Length; i++)
+                buf[index++] = (byte)userName[i];
+            buf[index++] = 1;
+            for (int i = 0; i < AuthBearer.Length; i++)
+                buf[index++] = (byte)AuthBearer[i];
+            for (int i = 0; i < authToken.Length; i++)
+                buf[index++] = (byte)authToken[i];
+            buf[index++] = 1;
+            buf[index++] = 1;
 
             IsAuthenticated = true;
 
-            return Encoding.ASCII.GetBytes(BearerToken);
+            XOAUTH2 = Convert.ToBase64String(buf);
+
+            return buf;
         }
     }
 }

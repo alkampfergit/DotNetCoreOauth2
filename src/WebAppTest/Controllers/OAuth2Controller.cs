@@ -77,7 +77,9 @@ namespace WebAppTest.Controllers
 
             var loginMessage = await oAuth2Client.GenerateUrlForCodeFlowAsync(
                 //"openid profile offline_access email https://graph.microsoft.com/IMAP.AccessAsUser.All",
-                "openid profile offline_access email https://outlook.office.com/IMAP.AccessAsUser.All",
+                //"openid profile offline_access email https://outlook.office.com/IMAP.AccessAsUser.All",
+                "openid offline_access https://outlook.office.com/IMAP.AccessAsUser.All",
+                //"openid email offline_access https://graph.microsoft.com/.default",
                 new Dictionary<string, string>());
 
             return Ok(loginMessage);
@@ -91,10 +93,23 @@ namespace WebAppTest.Controllers
             {
                 return StatusCode(500, "No token available");
             }
-            var client = new ImapClient(new ProtocolLogger(Console.OpenStandardOutput()));
 
-            client.Connect("outlook.office365.com", 993, true);
-            
+            //var oauth2_1 = new SaslMechanismOAuth2("worker@jarvisdemo.onmicrosoft.com", _lastToken.AccessToken);
+            var oauth2_1 = new SaslMethodXOAUTH2("worker@jarvisdemo.onmicrosoft.com", _lastToken.AccessToken);
+
+            using (var newClient = new ImapClient(new ProtocolLogger(Console.OpenStandardOutput())))
+            {
+                await newClient.ConnectAsync("outlook.office365.com", 993, SecureSocketOptions.SslOnConnect);
+                await newClient.AuthenticateAsync(oauth2_1);
+                //await newClient.DisconnectAsync(true);
+
+                var folder = newClient.GetFolder("archive-to-jarvis");
+                folder.Open(MailKit.FolderAccess.ReadWrite);
+                var query = SearchQuery.NotSeen;
+                var uidList = folder.Search(query)
+                    .Take(1000).ToList();
+            }
+           
             //client.AuthenticationMechanisms.Clear();
             //client.AuthenticationMechanisms.Add("XOAUTH2");
             //var oauth2 = new SaslMechanismOAuth2("worker@jarvisdemo.onmicrosoft.com", _lastToken.AccessToken);
@@ -105,25 +120,6 @@ namespace WebAppTest.Controllers
             var rawXOAUTH2 = Convert.ToBase64String(Encoding.ASCII.GetBytes(authString));
 
             return Ok(new { AuthString = authString, RawXOAUTH2 = rawXOAUTH2});
-            //client.Authenticate(oauth2);
-            //var folder = client.GetFolder("archive-to-jarvis");
-            //folder.Open(MailKit.FolderAccess.ReadWrite);
-            //var query = SearchQuery.NotSeen;
-            //var uidList = folder.Search(query)
-            //    .Take(1000).ToList();
-
-            //var infos = folder.Fetch(uidList, MessageSummaryItems.All);
-            //if (uidList.Count > 0)
-            //{
-            //    foreach (var info in infos)
-            //    {
-            //        var message = folder.GetMessage(info.UniqueId);
-            //        folder.AddFlags(info.UniqueId, MessageFlags.Seen, true, CancellationToken.None);
-            //        message.WriteTo("c:\\temp\\email.eml");
-            //    }
-            //}
-
-            //return Ok("OK");
         }
 
         private OAuth2Client CreateOAuth2Client()
