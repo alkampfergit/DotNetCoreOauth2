@@ -6,10 +6,31 @@ namespace DotNetCoreOAuth2
 {
     /// <summary>
     /// https://datatracker.ietf.org/doc/html/rfc7636
+    /// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
     /// </summary>
     public class CodeFlowHelper
     {
         private ConcurrentDictionary<string, RequestData> _requestData = new ConcurrentDictionary<string, RequestData>();
+
+        private Timer _timer;
+
+        public CodeFlowHelper()
+        {
+            _timer = new Timer(CleanUpCallback, null, 0, 1000 * 60 * 10);
+        }
+
+        private void CleanUpCallback(object state)
+        {
+            var expired = _requestData
+                .Values
+                .Where(v => v.IssueDateUtc < DateTime.UtcNow.AddMinutes(10))
+                .Select(v => v.State)
+                .ToList();
+            foreach (var expiredState in expired)
+            {
+                Clear(expiredState);
+            }
+        }
 
         public RequestData GenerateNewRequestData()
         {
@@ -46,8 +67,11 @@ namespace DotNetCoreOAuth2
             public string RedirectUrl { get; set; }
             public string Authority { get; set; }
 
+            public DateTime IssueDateUtc { get; set; }
+
             public RequestData(string state, string pkce)
             {
+                IssueDateUtc = DateTime.UtcNow;
                 using var sha = SHA256.Create();
 
                 State = state;

@@ -4,15 +4,15 @@ namespace DotNetCoreOAuth2
 {
     public class Oauth2Token
     {
-        public string Type { get; private set; }
+        public string Type { get;  set; }
 
-        public string Scope { get; private set; }
+        public string Scope { get;  set; }
 
-        public DateTime ExpireAtUtc { get; private set; }
+        public DateTime ExpireAtUtc { get; set; }
 
-        public string AccessToken { get; private set; }
+        public string AccessToken { get; set; }
 
-        public string RefreshToken { get; private set; }
+        public string RefreshToken { get;  set; }
 
         public static Oauth2Token DeserializeFromTokenResponse(string json)
         {
