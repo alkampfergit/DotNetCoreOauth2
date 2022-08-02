@@ -26,10 +26,13 @@ namespace DotNetCoreOAuth2
 
         public static string GenerateRandomString(int stringLength)
         {
+            var rng = RandomNumberGenerator.Create();
+            byte[] bytes = new byte[stringLength];
+            rng.GetBytes(bytes);
             StringBuilder password = new StringBuilder();
-            for (int i = 0; i < stringLength; i++)
+            for (int i = 0; i < bytes.Length; i++)
             {
-                password.Append(charPool[RandomNumberGenerator.GetInt32(charPool.Length)]);
+                password.Append(charPool[bytes[i] % charPool.Length]);
             }
             return password.ToString();
         }

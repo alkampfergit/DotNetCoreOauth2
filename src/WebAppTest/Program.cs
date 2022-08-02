@@ -14,10 +14,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton<CodeFlowHelper>();
+builder.Services.AddSingleton(
+    sp => new WellKnownConfigurationHandler(sp.GetService<IHttpClientFactory>()!, "default"));
 
 ConfigurationHelper.ConfigureSetting<OAuth2Settings>(builder.Services, builder.Configuration, "OAuth2");
 
-builder.Services.AddHttpClient("test");
+builder.Services.AddHttpClient("default");
 
 var app = builder.Build();
 

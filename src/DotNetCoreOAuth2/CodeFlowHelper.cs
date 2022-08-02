@@ -4,6 +4,9 @@ using System.Text;
 
 namespace DotNetCoreOAuth2
 {
+    /// <summary>
+    /// https://datatracker.ietf.org/doc/html/rfc7636
+    /// </summary>
     public class CodeFlowHelper
     {
         private ConcurrentDictionary<string, RequestData> _requestData = new ConcurrentDictionary<string, RequestData>();
@@ -22,7 +25,7 @@ namespace DotNetCoreOAuth2
 
         public RequestData? GetRequestData(string state)
         {
-            if (_requestData.TryGetValue(state, out var requestData)) 
+            if (_requestData.TryGetValue(state, out var requestData))
             {
                 return requestData;
             }
@@ -30,17 +33,32 @@ namespace DotNetCoreOAuth2
             return null;
         }
 
+        public void Clear(string state)
+        {
+            _requestData.TryRemove(state, out var _);
+        }
+
         public record RequestData
         {
-            public string State { get; init; }
-            public string Pkce { get; init; }
-            public string PkceHashed { get; init; }
+            public string State { get; }
+            public string Pkce { get; }
+            public string PkceHashed { get; }
+            public string RedirectUrl { get; set; }
+            public string Authority { get; set; }
 
             public RequestData(string state, string pkce)
             {
+                using var sha = SHA256.Create();
+
                 State = state;
                 Pkce = pkce;
-                PkceHashed = Convert.ToBase64String(SHA256.HashData(Encoding.ASCII.GetBytes(pkce))).TrimEnd('=');
+                PkceHashed =  Base64UrlEncoder.Encode(sha.ComputeHash(Encoding.ASCII.GetBytes(pkce)));
+            }
+
+            public void AddRequestData(string authority, string redirectUrl)
+            {
+                RedirectUrl = redirectUrl;
+                Authority = authority;
             }
         }
     }

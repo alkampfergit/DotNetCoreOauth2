@@ -18,5 +18,23 @@
             Assert.That(requestData.Pkce.Length, Is.EqualTo(64));
             Assert.That(requestData.PkceHashed.Length, Is.EqualTo(43));
         }
+
+        [Test]
+        public void Can_request_by_state()
+        {
+            var original = _sut.GenerateNewRequestData();
+            var requestData = _sut.GetRequestData(original.State)!;
+
+            Assert.That(requestData.Pkce.Length, Is.EqualTo(64));
+            Assert.That(requestData.PkceHashed.Length, Is.EqualTo(43));
+        }
+
+        [Test]
+        public void Can_clear_state()
+        {
+            var original = _sut.GenerateNewRequestData();
+            _sut.Clear(original.State);
+            Assert.IsNull(_sut.GetRequestData(original.State));
+        }
     }
 }

@@ -1,22 +1,25 @@
 ﻿using Microsoft.AspNetCore.WebUtilities;
-using static System.Formats.Asn1.AsnWriter;
+using System.Security;
 
 namespace DotNetCoreOAuth2
 {
     public class OAuth2Client
     {
         private readonly CodeFlowHelper _codeFlowHelper;
+        private readonly WellKnownConfigurationHandler _wellKnownConfigurationHandler;
         private readonly string _clientId;
         private readonly string _authority;
         private readonly string _redirectUrl;
 
         public OAuth2Client(
             CodeFlowHelper _codeFlowHelper,
+            WellKnownConfigurationHandler wellKnownConfigurationHandler,
             string clientId,
             string authority,
             string redirectUrl)
         {
             this._codeFlowHelper = _codeFlowHelper;
+            _wellKnownConfigurationHandler = wellKnownConfigurationHandler;
             _clientId = clientId;
             _authority = authority;
             _redirectUrl = redirectUrl;
@@ -26,52 +29,58 @@ namespace DotNetCoreOAuth2
         /// Generate the token request httpmessage, then the client can send
         /// with simple HttpClient
         /// </summary>
-        /// <param name="request"></param>
+        /// <param name="queryString"></param>
+        /// <param name="clientSecret">Client secret if provided</param>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public HttpRequestMessage GenerateTokenRequest(Object request)
+        public async Task<HttpRequestMessage> GenerateTokenRequestAsync(string queryString, string clientSecret)
         {
-            var requestData = _codeFlowHelper.GenerateNewRequestData();
+            var queryParameters = QueryHelpers.ParseQuery(queryString);
+            var state = queryParameters["state"];
+            var requestState = _codeFlowHelper.GetRequestData(state);
+            if (requestState == null)
+            {
+                throw new SecurityException("unexpected state");
+            }
+            _codeFlowHelper.Clear(state);
             Dictionary<string, string> parameters = new Dictionary<string, string>()
             {
-                { "client_id", _clientId },
-                { "redirect_uri", _redirectUrl },
-                { "response_type", "code" },
-                { "scope", scope },
-                { "access_type", "offline" },
-                { "include_granted_scopes", "true" },
-                { "state", requestData.State },
-                { "code_challenge", requestData.PkceHashed},
-                { "code_challenge_method", "S256"}
+                ["grant_type"] = "authorization_code",
+                ["code"] = queryParameters["code"],
+                ["redirect_uri"] = requestState.RedirectUrl,
+                ["code_verifier"] = requestState.Pkce,
+                ["client_id"] = _clientId
             };
-            if (customParameters != null)
+            if (!String.IsNullOrEmpty(clientSecret)) 
             {
-                foreach (var param in customParameters)
-                {
-                    parameters[param.Key] = param.Value;
-                }
+                parameters["client_secret"] = clientSecret;
             }
-            var url = QueryHelpers.AddQueryString(_authority, parameters);
+            var content = new FormUrlEncodedContent(parameters);
+            var tokenRequestUrl = await _wellKnownConfigurationHandler.GetTokenUrlAsync(requestState.Authority);
+            var request = new HttpRequestMessage(HttpMethod.Post, tokenRequestUrl);
 
-            return new Uri(url);
+            request.Content = content;
+            return request;
         }
 
-        public Uri GenerateUrlForCodeFlow(
+        public async Task<Uri> GenerateUrlForCodeFlowAsync(
             string scope,
             IDictionary<string, string>? customParameters)
         {
             var requestData = _codeFlowHelper.GenerateNewRequestData();
             Dictionary<string, string> parameters = new Dictionary<string, string>()
             {
-                { "client_id", _clientId },
-                { "redirect_uri", _redirectUrl },
-                { "response_type", "code" },
-                { "scope", scope },
-                { "access_type", "offline" },
-                { "include_granted_scopes", "true" },
-                { "state", requestData.State },
-                { "code_challenge", requestData.PkceHashed},
-                { "code_challenge_method", "S256"}
+                ["client_id"] = _clientId,
+                ["redirect_uri"] = _redirectUrl,
+                ["response_type"] = "code",
+                ["scope"] = scope,
+                ["access_type"] = "offline",
+                ["include_granted_scopes"] = "true",
+                ["state"] = requestData.State,
+                ["code_challenge"] = requestData.PkceHashed,
+                ["code_challenge_method"] = "S256" 
+                //["code_challenge"] = requestData.Pkce,
+                //["code_challenge_method"] = "plain"
             };
             if (customParameters != null)
             {
@@ -80,8 +89,11 @@ namespace DotNetCoreOAuth2
                     parameters[param.Key] = param.Value;
                 }
             }
-            var url = QueryHelpers.AddQueryString(_authority, parameters);
 
+            var authUrl = await _wellKnownConfigurationHandler.GetAuthorizationUrlAsync(_authority);
+            var url = QueryHelpers.AddQueryString(authUrl, parameters);
+
+            requestData.AddRequestData(_authority, _redirectUrl);
             return new Uri(url);
         }
     }
