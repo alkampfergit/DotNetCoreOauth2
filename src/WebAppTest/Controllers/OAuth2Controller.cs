@@ -1,13 +1,13 @@
 using DotNetCoreOAuth2;
+using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
-using MailKit;
+using MailKit.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using MailKit.Security;
+using Newtonsoft.Json;
 using System.Text;
 using WebAppTest.Support;
-using Newtonsoft.Json;
 
 namespace WebAppTest.Controllers
 {
@@ -22,9 +22,9 @@ namespace WebAppTest.Controllers
         private readonly IOptionsMonitor<OAuth2Settings> _oauth2Settings;
         private readonly IHttpClientFactory _httpClientFactory;
 
-        static OAuth2Controller() 
+        static OAuth2Controller()
         {
-            if (System.IO.File.Exists("lasttoken.txt")) 
+            if (System.IO.File.Exists("lasttoken.txt"))
             {
                 var text = System.IO.File.ReadAllText("lasttoken.txt");
                 _lastToken = JsonConvert.DeserializeObject<Oauth2Token>(text);
@@ -62,11 +62,15 @@ namespace WebAppTest.Controllers
                 return StatusCode(500, $"Internal error: {error}");
             }
 
-            var stringResponse = await response.Content.ReadAsStringAsync();
-
-            _lastToken = Oauth2Token.DeserializeFromTokenResponse(stringResponse);
-            System.IO.File.WriteAllText("lasttoken.txt", JsonConvert.SerializeObject(_lastToken));
+            await UpdateTokenFromResponse(response);
             return Ok(_lastToken);
+        }
+
+        private static async Task UpdateTokenFromResponse(HttpResponseMessage response)
+        {
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _lastToken = Oauth2Token.DeserializeFromTokenResponse(stringResponse);
+            await System.IO.File.WriteAllTextAsync("lasttoken.txt", JsonConvert.SerializeObject(_lastToken));
         }
 
         [HttpGet]
@@ -87,21 +91,44 @@ namespace WebAppTest.Controllers
 
         [HttpGet]
         [Route("office-365-get-mail")]
-        public async Task<IActionResult> GetMail()
+        public async Task<IActionResult> GetMail(string emailAddress)
         {
-            if (_lastToken == null) 
+            if (_lastToken == null)
             {
                 return StatusCode(500, "No token available");
             }
 
+            if (_lastToken.ExpireAtUtc < DateTime.UtcNow.AddMinutes(2))
+            {
+                //we need to refresh token
+                OAuth2Client oAuth2Client = CreateOAuth2Client();
+                var request = await oAuth2Client.GenerateTokenRefreshRequestAsync(
+                    _oauth2Settings.CurrentValue.Authority,
+                    _lastToken,
+                    _oauth2Settings.CurrentValue.ClientSecret);
+
+                var client = _httpClientFactory.CreateClient("default");
+                var response = await client.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    string error = "";
+                    if (response.Content != null)
+                    {
+                        error = (await response.Content.ReadAsStringAsync()) ?? "";
+                    }
+                    return StatusCode(500, $"Internal error Refreshing token: {error}");
+                }
+
+                await UpdateTokenFromResponse(response);
+            }
+
             //var oauth2_1 = new SaslMechanismOAuth2("worker@jarvisdemo.onmicrosoft.com", _lastToken.AccessToken);
-            var oauth2_1 = new SaslMethodXOAUTH2("worker@jarvisdemo.onmicrosoft.com", _lastToken.AccessToken);
+            var oauth2_1 = new SaslMethodXOAUTH2(emailAddress, _lastToken.AccessToken);
 
             using (var newClient = new ImapClient(new ProtocolLogger(Console.OpenStandardOutput())))
             {
                 await newClient.ConnectAsync("outlook.office365.com", 993, SecureSocketOptions.SslOnConnect);
                 await newClient.AuthenticateAsync(oauth2_1);
-                //await newClient.DisconnectAsync(true);
 
                 var folder = newClient.GetFolder("archive-to-jarvis");
                 folder.Open(MailKit.FolderAccess.ReadWrite);
@@ -109,17 +136,20 @@ namespace WebAppTest.Controllers
                 var uidList = folder.Search(query)
                     .Take(1000).ToList();
             }
-           
-            //client.AuthenticationMechanisms.Clear();
-            //client.AuthenticationMechanisms.Add("XOAUTH2");
-            //var oauth2 = new SaslMechanismOAuth2("worker@jarvisdemo.onmicrosoft.com", _lastToken.AccessToken);
-            //var oauth2 = new SaslMethodXOAUTH2("worker@jarvisdemo.onmicrosoft.com", _lastToken.AccessToken);
 
-            var oauth2 = new SaslMethodXOAUTH2("worker@jarvisdemo.onmicrosoft.com", _lastToken.AccessToken);
-            var authString = $"user=worker@jarvisdemo.onmicrosoft.com^Aauth=Bearer {_lastToken.AccessToken}^A^A";
-            var rawXOAUTH2 = Convert.ToBase64String(Encoding.ASCII.GetBytes(authString));
+            using var ms = new MemoryStream(_lastToken.RefreshToken.Length + 200);
+            using var bw = new BinaryWriter(ms);
+            bw.Write(Encoding.ASCII.GetBytes("user="));
+            bw.Write(Encoding.ASCII.GetBytes(emailAddress));
+            bw.Write((byte)1);
+            bw.Write(Encoding.ASCII.GetBytes("auth=Bearer "));
+            bw.Write(Encoding.ASCII.GetBytes(_lastToken.AccessToken));
+            bw.Write((byte)1);
+            bw.Write((byte)1);
 
-            return Ok(new { AuthString = authString, RawXOAUTH2 = rawXOAUTH2});
+            var rawXOAUTH2 = Convert.ToBase64String(ms.ToArray());
+
+            return Ok(new { AuthString = BitConverter.ToString(ms.ToArray()), RawXOAUTH2 = rawXOAUTH2 });
         }
 
         private OAuth2Client CreateOAuth2Client()

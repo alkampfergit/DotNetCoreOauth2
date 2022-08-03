@@ -96,5 +96,28 @@ namespace DotNetCoreOAuth2
             requestData.AddRequestData(_authority, _redirectUrl);
             return new Uri(url);
         }
+
+        public async Task<HttpRequestMessage> GenerateTokenRefreshRequestAsync(
+            string authority,
+            Oauth2Token oauth2Token,
+            string clientSecret)
+        {
+            Dictionary<string, string> parameters = new Dictionary<string, string>()
+            {
+                ["grant_type"] = "refresh_token",
+                ["refresh_token"] = oauth2Token.RefreshToken,
+                ["client_id"] = _clientId,
+            };
+            if (!String.IsNullOrEmpty(clientSecret))
+            {
+                parameters["client_secret"] = clientSecret;
+            }
+            var content = new FormUrlEncodedContent(parameters);
+            var tokenRequestUrl = await _wellKnownConfigurationHandler.GetTokenUrlAsync(authority);
+            var request = new HttpRequestMessage(HttpMethod.Post, tokenRequestUrl);
+
+            request.Content = content;
+            return request;
+        }
     }
 }
