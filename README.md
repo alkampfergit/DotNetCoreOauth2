@@ -10,9 +10,9 @@ To use the application you need to configure the OAuth2 section in appsettings.j
 
 ### Office 365 IMAP scenario
 
-Create the application in Azure, then navigate to https://{urlofapplication}/Oauth2/trigger-login and the app will generate the URL to trigger a code flow to get the access token.
+Create the application in Azure, then navigate to **https://{urlofapplication}/Oauth2/trigger-login** and the app will generate the URL to trigger a code flow to get the access token. You can put a breakpoint in the GetToken method if you want to debug **how the server ask for a real token from the code received in querystring**.
 
-Copy that string to another tab to trigger the login.
+The application is really simple, it **stores in memory the latest token received**, and if you want to check if that token can be used to access your IMAP folder, you can navigate to **https://{urlofapplication}/Oauth2/office-365-get-mail?emailAddress=your-email-address**. If you do not get an error MimeKit was able to autenticate, and you can use the token received to try to authenticate directly with the IMAP server with openssl.
 
 
 
