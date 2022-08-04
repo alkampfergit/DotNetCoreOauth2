@@ -43,6 +43,24 @@ namespace WebAppTest.Controllers
             _httpClientFactory = httpClientFactory;
         }
 
+        [HttpGet]
+        [Route("trigger-login")]
+        public async Task<IActionResult> TriggerLogin()
+        {
+            OAuth2Client oAuth2Client = CreateOAuth2Client();
+            //"openid profile offline_access email https://graph.microsoft.com/IMAP.AccessAsUser.All",
+            //"openid profile offline_access email https://outlook.office.com/IMAP.AccessAsUser.All",
+            //"openid email offline_access https://graph.microsoft.com/.default",
+
+            var codeChallengeUrl = await oAuth2Client.GenerateUrlForCodeFlowAsync(
+                "openid offline_access https://outlook.office.com/IMAP.AccessAsUser.All",
+                new Dictionary<string, string>());
+
+            // In a real world, this will return a redirect to the code challenge url so that
+            // the user will be immediately prompted with a login page.
+            return Ok(codeChallengeUrl);
+        }
+
         /// <summary>
         /// Standard handler that will receive code_challenge data in querystring
         /// and will perform POST request to obtain token.
@@ -76,24 +94,6 @@ namespace WebAppTest.Controllers
             var stringResponse = await response.Content.ReadAsStringAsync();
             _lastToken = Oauth2Token.DeserializeFromTokenResponse(stringResponse);
             await System.IO.File.WriteAllTextAsync("lasttoken.txt", JsonConvert.SerializeObject(_lastToken));
-        }
-
-        [HttpGet]
-        [Route("trigger-login")]
-        public async Task<IActionResult> TriggerLogin()
-        {
-            OAuth2Client oAuth2Client = CreateOAuth2Client();
-            //"openid profile offline_access email https://graph.microsoft.com/IMAP.AccessAsUser.All",
-            //"openid profile offline_access email https://outlook.office.com/IMAP.AccessAsUser.All",
-            //"openid email offline_access https://graph.microsoft.com/.default",
-
-            var codeChallengeUrl = await oAuth2Client.GenerateUrlForCodeFlowAsync(
-                "openid offline_access https://outlook.office.com/IMAP.AccessAsUser.All",
-                new Dictionary<string, string>());
-
-            // In a real world, this will return a redirect to the code challenge url so that
-            // the user will be immediately prompted with a login page.
-            return Ok(codeChallengeUrl);
         }
 
         /// <summary>
@@ -143,11 +143,11 @@ namespace WebAppTest.Controllers
                 await newClient.AuthenticateAsync(oauth2_1);
 
                 // you can now interact with the email.
-                //var folder = newClient.GetFolder("archive-to-jarvis");
-                //folder.Open(MailKit.FolderAccess.ReadWrite);
-                //var query = SearchQuery.NotSeen;
-                //var uidList = folder.Search(query)
-                //    .Take(1000).ToList();
+                var folder = newClient.GetFolder("archive-to-jarvis");
+                folder.Open(MailKit.FolderAccess.ReadWrite);
+                var query = SearchQuery.NotSeen;
+                var uidList = folder.Search(query)
+                    .Take(1000).ToList();
             }
 
             using var ms = new MemoryStream(_lastToken.RefreshToken.Length + 200);
