@@ -26,6 +26,30 @@ namespace DotNetCoreOAuth2
         }
 
         /// <summary>
+        /// Generate the token request httpmessage for a simple client flow.
+        /// </summary>
+        /// <param name="clientSecret">Client secret if provided</param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public async Task<HttpRequestMessage> GenerateTokenRequestForClientFlowAsync(string authority, string scope, string clientSecret)
+        {
+            Dictionary<string, string> parameters = new Dictionary<string, string>()
+            {
+                ["grant_type"] = "client_credentials",
+                ["scope"] = scope,
+                ["client_secret "] = clientSecret,
+                ["client_id"] = _clientId
+            };
+
+            var content = new FormUrlEncodedContent(parameters);
+            var tokenRequestUrl = await _wellKnownConfigurationHandler.GetTokenUrlAsync(authority);
+            var request = new HttpRequestMessage(HttpMethod.Post, tokenRequestUrl);
+
+            request.Content = content;
+            return request;
+        }
+
+        /// <summary>
         /// Generate the token request httpmessage, then the client can send
         /// with simple HttpClient
         /// </summary>
@@ -51,7 +75,7 @@ namespace DotNetCoreOAuth2
                 ["code_verifier"] = requestState.Pkce,
                 ["client_id"] = _clientId
             };
-            if (!String.IsNullOrEmpty(clientSecret)) 
+            if (!String.IsNullOrEmpty(clientSecret))
             {
                 parameters["client_secret"] = clientSecret;
             }
@@ -78,7 +102,7 @@ namespace DotNetCoreOAuth2
                 ["include_granted_scopes"] = "true",
                 ["state"] = requestData.State,
                 ["code_challenge"] = requestData.PkceHashed,
-                ["code_challenge_method"] = "S256" 
+                ["code_challenge_method"] = "S256"
                 //["code_challenge"] = requestData.Pkce,
                 //["code_challenge_method"] = "plain"
             };
