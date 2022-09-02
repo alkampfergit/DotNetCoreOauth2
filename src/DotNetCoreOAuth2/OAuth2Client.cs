@@ -1,10 +1,5 @@
-﻿using Jarvis.Automation.MailSender.Support;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
+﻿using Microsoft.AspNetCore.WebUtilities;
 using System.Security;
-using System.Text;
 
 namespace DotNetCoreOAuth2
 {

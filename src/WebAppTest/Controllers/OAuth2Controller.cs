@@ -52,8 +52,11 @@ namespace WebAppTest.Controllers
             //"openid profile offline_access email https://outlook.office.com/IMAP.AccessAsUser.All",
             //"openid email offline_access https://graph.microsoft.com/.default",
 
+            var relativeUrl = Url.Action("GetToken", "OAuth2")!;
+            var redirectUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}/{relativeUrl.TrimStart('/')}";
             var codeChallengeUrl = await oAuth2Client.GenerateUrlForCodeFlowAsync(
                 "openid offline_access https://outlook.office.com/IMAP.AccessAsUser.All",
+                redirectUrl,
                 new Dictionary<string, string>());
 
             // In a real world, this will return a redirect to the code challenge url so that
@@ -71,10 +74,10 @@ namespace WebAppTest.Controllers
         public async Task<IActionResult> GetToken()
         {
             OAuth2Client oAuth2Client = CreateOAuth2Client();
-            var request = await oAuth2Client.GenerateTokenRequestAsync(Request.QueryString.Value!, _oauth2Settings.CurrentValue.ClientSecret);
+            var tokenRequest = await oAuth2Client.GenerateTokenRequestAsync(Request.QueryString.Value!, _oauth2Settings.CurrentValue.ClientSecret);
 
             var client = _httpClientFactory.CreateClient("default");
-            var response = await client.SendAsync(request);
+            var response = await client.SendAsync(tokenRequest.Request);
             if (!response.IsSuccessStatusCode)
             {
                 string error = "";
@@ -109,7 +112,6 @@ namespace WebAppTest.Controllers
                 //we need to refresh token
                 OAuth2Client oAuth2Client = CreateOAuth2Client();
                 var request = await oAuth2Client.GenerateTokenRefreshRequestAsync(
-                    _oauth2Settings.CurrentValue.Authority,
                     _lastToken,
                     _oauth2Settings.CurrentValue.ClientSecret);
 
@@ -178,14 +180,11 @@ namespace WebAppTest.Controllers
 
         private OAuth2Client CreateOAuth2Client()
         {
-            var relativeUrl = Url.Action("GetToken", "OAuth2")!;
-            var redirectUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}/{relativeUrl.TrimStart('/')}";
             OAuth2Client oAuth2Client = new OAuth2Client(
                 _codeFlowHelper,
                 _wellKnownConfigurationHandler,
-                _oauth2Settings.CurrentValue.ClientId,
                 _oauth2Settings.CurrentValue.Authority,
-                redirectUrl);
+                _oauth2Settings.CurrentValue.ClientId);
             return oAuth2Client;
         }
 
