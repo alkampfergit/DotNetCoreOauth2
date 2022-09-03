@@ -19,9 +19,7 @@
         public string IdToken { get; set; }
 
         public string EmailAddress { get; set; }
-
-        public string ImapResult { get; set; }
         
-        public string SmtpResult { get; set; }
+        public string TestResult { get; set; }
     }
 }

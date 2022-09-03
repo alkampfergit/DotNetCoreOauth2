@@ -6,32 +6,57 @@
     @if (String.IsNullOrEmpty(Model.AccessToken))
     {
         <h2>IMAP with client credentials flow</h2>
-        <form action="/sample-imap/client-flow" method="post">
+        <form action="/sample-oauth2/imap-client-flow" method="post">
 
             <label for="email">Email address:</label>
             <input type="text" id="email" name="email" />
             <input type="submit" value="Generate IMAP Client credentials flow link" />
         </form>
 
+        <h2>SMTP with client credentials flow</h2>
+        <form action="/sample-oauth2/smtp-client-flow" method="post">
+
+            <label for="email">From Email address:</label>
+            <input type="text" id="from" name="from" />
+
+            <label for="email">To Email address:</label>
+            <input type="text" id="to" name="to" />
+            <input type="submit" value="Send mail with SMTP and Client credentials flow link" />
+        </form>
+
         <h2>IMAP with code flow</h2>
-        <form action="/sample-imap/code-flow" method="post">
+        <form action="/sample-oauth2/code-flow" method="post">
 
             <input type="submit" value="Generate IMAP code flow link" />
         </form>
     }
 
-    <form action="/sample-imap/test-imap" method="post">
+    @if (!String.IsNullOrEmpty(Model.AccessToken))
+    {
+        <h1> TEST Actual token</h1>
+        <form action="/sample-oauth2/test-imap" method="post">
 
-        <input type="hidden" name="state" id="state" value="@Model.State" />
-        @if (!String.IsNullOrEmpty(Model.AccessToken))
-        {
+            <input type="hidden" name="state" id="state" value="@Model.State" />
+
             <input type="submit" value="Test Imap" />
-        }
-        @if (!String.IsNullOrEmpty(Model.ImapResult))
-        {
-            <h2>Result of accessing imap for @Model.EmailAddress: @Model.ImapResult </h2>
-        }
-    </form>
+
+        </form>
+        <br />
+        <form action="/sample-oauth2/test-smtp" method="post">
+
+            <input type="hidden" name="state" id="state" value="@Model.State" />
+
+            <label for="email">To Email address:</label>
+            <input type="text" id="to" name="to" />
+            <input type="submit" value="Send mail with SMTP and actual token" />
+
+        </form>
+    }
+
+    @if (!String.IsNullOrEmpty(Model.TestResult))
+    {
+        <h2>Result of accessing imap/smtp with XOAUTH2 for @Model.EmailAddress: @Model.TestResult </h2>
+    }
 
     @if (!String.IsNullOrEmpty(Model.LoginLink))
     {
@@ -40,7 +65,7 @@
         <h3>Debug login link</h3>
         <pre>@Model.DebugLoginLink</pre>
     }
-    @if (!String.IsNullOrEmpty(Model.IdToken))
+    @if (!String.IsNullOrEmpty(Model.AccessToken))
     {
         <h3>Code flow idp response</h3>
         <pre>@Model.IdpResponseLink</pre>
