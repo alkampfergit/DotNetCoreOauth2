@@ -1,29 +1,30 @@
 ﻿using DotNetCoreOAuth2;
+using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Security;
-using MailKit;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
-using System;
-using System.Net.Http;
+using Newtonsoft.Json;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Mail;
 using System.Text;
 using WebAppTest.Controllers.Models;
-using System.IdentityModel.Tokens.Jwt;
 
 namespace WebAppTest.Controllers
 {
-    [Route("sample-imap-code-flow")]
-    public class SampleIMAPCodeFlowController : Controller
+    [Route("sample-imap")]
+    public class SampleIMAPController : Controller
     {
-        private CodeFlowHelper _codeFlowHelper;
-        private WellKnownConfigurationHandler _wellKnownConfigurationHandler;
-        private IOptionsMonitor<OAuth2Settings> _oauth2Settings;
-        private IHttpClientFactory _httpClientFactory;
+        private readonly CodeFlowHelper _codeFlowHelper;
+        private readonly WellKnownConfigurationHandler _wellKnownConfigurationHandler;
+        private readonly IOptionsMonitor<OAuth2Settings> _oauth2Settings;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public SampleIMAPCodeFlowController(
+        private static Dictionary<string, SampleIMAPModel> InMemoryDb = new Dictionary<string, SampleIMAPModel>();
+
+        public SampleIMAPController(
             CodeFlowHelper codeFlowHelper,
             WellKnownConfigurationHandler wellKnownConfigurationHandler,
             IOptionsMonitor<OAuth2Settings> oauth2Settings,
@@ -36,20 +37,18 @@ namespace WebAppTest.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            return View(new SampleIMAPCodeFlowModel());
+            return View(new SampleIMAPModel());
         }
 
-        private static Dictionary<string, SampleIMAPCodeFlowModel> InMemoryDb = new Dictionary<string, SampleIMAPCodeFlowModel>();
-
-        [Route("Flow")]
+        [Route("code-flow")]
         [HttpPost]
-        public async Task<IActionResult> Flow()
+        public async Task<IActionResult> CodeFlow()
         {
             OAuth2Client oAuth2Client = CreateOAuth2Client();
 
-            var relativeUrl = Url.Action("GetToken", "SampleIMAPCodeFlow")!;
+            var relativeUrl = Url.Action("GetToken", "SampleIMAP")!;
             var redirectUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}/{relativeUrl.TrimStart('/')}";
             var customState = Guid.NewGuid().ToString();
             var codeChallengeUrl = await oAuth2Client.GenerateUrlForCodeFlowAsync(
@@ -60,7 +59,7 @@ namespace WebAppTest.Controllers
 
             // In a real world, this will return a redirect to the code challenge url so that
             // the user will be immediately prompted with a login page.
-            var model = new SampleIMAPCodeFlowModel();
+            var model = new SampleIMAPModel();
             model.State = customState;
             model.LoginLink = codeChallengeUrl.AbsoluteUri;
             model.DebugLoginLink = DumpUrl(model.LoginLink);
@@ -69,18 +68,38 @@ namespace WebAppTest.Controllers
             return View("Index", model);
         }
 
-        private static string DumpUrl(string stringUri)
+        [Route("client-flow")]
+        [HttpPost]
+        public async Task<IActionResult> ClientFlow(ClientFlowDto dto)
         {
-            var uri = new Uri(stringUri);
-            var queryStringParsed = QueryHelpers.ParseQuery(uri.Query);
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine($"Request to = {uri.AbsoluteUri.Split('?')[0]}");
-            foreach (var element in queryStringParsed)
+            OAuth2Client oAuth2Client = CreateOAuth2Client();
+            var request = await oAuth2Client.GenerateTokenRequestForClientFlowAsync(
+                _oauth2Settings.CurrentValue.Authority,
+                "https://outlook.office365.com/.default",
+                _oauth2Settings.CurrentValue.ClientSecret);
+
+            var client = _httpClientFactory.CreateClient("default");
+            var response = await client.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
             {
-                sb.AppendLine($"{element.Key} = {element.Value}");
+                string error = "";
+                if (response.Content != null)
+                {
+                    error = (await response.Content.ReadAsStringAsync()) ?? "";
+                }
+                return StatusCode(500, $"Internal error: {error}");
             }
 
-            return sb.ToString();
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            var obj = JsonConvert.DeserializeAnonymousType(stringResponse, new
+            {
+                access_token = ""
+            })!;
+
+            var model = new SampleIMAPModel();
+            model.AccessToken = obj.access_token;
+            await ConnectToImap(model, dto.Email);
+            return View("Index", model);
         }
 
         /// <summary>
@@ -137,9 +156,13 @@ namespace WebAppTest.Controllers
         [Route("test-imap")]
         public async Task<IActionResult> TestImap(TestImapDto dto)
         {
-            OAuth2Client oAuth2Client = CreateOAuth2Client();
             var model = InMemoryDb[dto.State];
-           
+
+            return await TestImapConnection(model);
+        }
+
+        private async Task<IActionResult> TestImapConnection(SampleIMAPModel model)
+        {
             JwtSecurityTokenHandler h = new JwtSecurityTokenHandler();
             var jwtToken = h.ReadJwtToken(model.IdToken);
 
@@ -148,9 +171,18 @@ namespace WebAppTest.Controllers
             {
                 model.ImapResult = "ERROR: Received claim does not contains email";
             }
+            else
+            {
+                await ConnectToImap(model, emailClaim.Value);
+            }
 
-            var oauth2_1 = new SaslMechanismOAuth2(emailClaim.Value, model.AccessToken);
+            return View("Index", model);
+        }
 
+        private static async Task ConnectToImap(SampleIMAPModel model, string email)
+        {
+            var oauth2_1 = new SaslMechanismOAuth2(email, model.AccessToken);
+            model.EmailAddress = email;
             try
             {
                 using (var newClient = new ImapClient(new ProtocolLogger(Console.OpenStandardOutput())))
@@ -164,8 +196,6 @@ namespace WebAppTest.Controllers
             {
                 model.ImapResult = $"ERROR: {ex.Message}";
             }
-
-            return View("Index", model);
         }
 
         private OAuth2Client CreateOAuth2Client()
@@ -176,6 +206,20 @@ namespace WebAppTest.Controllers
                 _oauth2Settings.CurrentValue.Authority,
                 _oauth2Settings.CurrentValue.ClientId);
             return oAuth2Client;
+        }
+
+        private static string DumpUrl(string stringUri)
+        {
+            var uri = new Uri(stringUri);
+            var queryStringParsed = QueryHelpers.ParseQuery(uri.Query);
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine($"Request to = {uri.AbsoluteUri.Split('?')[0]}");
+            foreach (var element in queryStringParsed)
+            {
+                sb.AppendLine($"{element.Key} = {element.Value}");
+            }
+
+            return sb.ToString();
         }
     }
 }
