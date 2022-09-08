@@ -66,6 +66,7 @@ namespace DotNetCoreOAuth2
             public string PkceHashed { get; }
             public string RedirectUrl { get; set; }
             public string Authority { get; set; }
+            public string CustomState { get; set; }
 
             public DateTime IssueDateUtc { get; set; }
 
@@ -76,13 +77,14 @@ namespace DotNetCoreOAuth2
 
                 State = state;
                 Pkce = pkce;
-                PkceHashed =  Base64UrlEncoder.Encode(sha.ComputeHash(Encoding.ASCII.GetBytes(pkce)));
+                PkceHashed = Base64UrlEncoder.Encode(sha.ComputeHash(Encoding.ASCII.GetBytes(pkce)));
             }
 
-            public void AddRequestData(string authority, string redirectUrl)
+            public void AddRequestData(string authority, string redirectUrl, string customState)
             {
                 RedirectUrl = redirectUrl;
                 Authority = authority;
+                CustomState = customState;
             }
         }
     }

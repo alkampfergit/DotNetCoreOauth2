@@ -1,0 +1,82 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model WebAppTest.Controllers.Models.SampleIMAPModel
+@{
+    @if (String.IsNullOrEmpty(Model.AccessToken))
+    {
+        <h2>IMAP with client credentials flow</h2>
+        <form action="/sample-oauth2/imap-client-flow" method="post">
+
+            <label for="email">Email address:</label>
+            <input type="text" id="email" name="email" />
+            <input type="submit" value="Generate IMAP Client credentials flow link" />
+        </form>
+
+        <h2>SMTP with client credentials flow</h2>
+        <form action="/sample-oauth2/smtp-client-flow" method="post">
+
+            <label for="email">From Email address:</label>
+            <input type="text" id="from" name="from" />
+
+            <label for="email">To Email address:</label>
+            <input type="text" id="to" name="to" />
+            <input type="submit" value="Send mail with SMTP and Client credentials flow link" />
+        </form>
+
+        <h2>IMAP with code flow</h2>
+        <form action="/sample-oauth2/code-flow" method="post">
+
+            <input type="submit" value="Generate code flow link" />
+        </form>
+    }
+
+    @if (!String.IsNullOrEmpty(Model.AccessToken))
+    {
+        <h1> TEST Actual token</h1>
+        <form action="/sample-oauth2/test-imap" method="post">
+
+            <input type="hidden" name="state" id="state" value="@Model.State" />
+
+            <input type="submit" value="Test Imap" />
+
+        </form>
+        <br />
+        <form action="/sample-oauth2/test-smtp" method="post">
+
+            <input type="hidden" name="state" id="state" value="@Model.State" />
+
+            <label for="email">To Email address:</label>
+            <input type="text" id="to" name="to" />
+            <input type="submit" value="Send mail with SMTP and actual token" />
+
+        </form>
+    }
+
+    @if (!String.IsNullOrEmpty(Model.TestResult))
+    {
+        <h2>Result of accessing imap/smtp with XOAUTH2 for @Model.EmailAddress: @Model.TestResult </h2>
+    }
+
+    @if (!String.IsNullOrEmpty(Model.LoginLink))
+    {
+        <h3>Link to login</h3>
+        <a href="@Model.LoginLink"> @Model.LoginLink</a>
+        <h3>Debug login link</h3>
+        <pre>@Model.DebugLoginLink</pre>
+    }
+    @if (!String.IsNullOrEmpty(Model.AccessToken))
+    {
+        <h3>Code flow idp response</h3>
+        <pre>@Model.IdpResponseLink</pre>
+        <h3>Token Request</h3>
+        <pre>@Model.RequestTokenData</pre>
+        <h3>Id Token</h3>
+        <pre>@Model.IdToken</pre>
+        <h3>Access Token</h3>
+        <pre>@Model.AccessToken</pre>
+        <h3>RefreshToken Token</h3>
+        <pre>@Model.RefreshToken</pre>
+    }
+
+}

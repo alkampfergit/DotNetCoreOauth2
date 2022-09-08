@@ -9,20 +9,17 @@ namespace DotNetCoreOAuth2
         private readonly WellKnownConfigurationHandler _wellKnownConfigurationHandler;
         private readonly string _clientId;
         private readonly string _authority;
-        private readonly string _redirectUrl;
 
         public OAuth2Client(
             CodeFlowHelper _codeFlowHelper,
             WellKnownConfigurationHandler wellKnownConfigurationHandler,
-            string clientId,
             string authority,
-            string redirectUrl)
+            string clientId)
         {
             this._codeFlowHelper = _codeFlowHelper;
             _wellKnownConfigurationHandler = wellKnownConfigurationHandler;
             _clientId = clientId;
             _authority = authority;
-            _redirectUrl = redirectUrl;
         }
 
         /// <summary>
@@ -57,7 +54,9 @@ namespace DotNetCoreOAuth2
         /// <param name="clientSecret">Client secret if provided</param>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public async Task<HttpRequestMessage> GenerateTokenRequestAsync(string queryString, string clientSecret)
+        public async Task<(HttpRequestMessage Request, string CustomState)> GenerateTokenRequestAsync(
+            string queryString,
+            string clientSecret)
         {
             var queryParameters = QueryHelpers.ParseQuery(queryString);
             var state = queryParameters["state"];
@@ -66,6 +65,7 @@ namespace DotNetCoreOAuth2
             {
                 throw new SecurityException("unexpected state");
             }
+
             _codeFlowHelper.Clear(state);
             Dictionary<string, string> parameters = new Dictionary<string, string>()
             {
@@ -75,7 +75,7 @@ namespace DotNetCoreOAuth2
                 ["code_verifier"] = requestState.Pkce,
                 ["client_id"] = _clientId
             };
-            if (!String.IsNullOrEmpty(clientSecret))
+            if (!string.IsNullOrEmpty(clientSecret))
             {
                 parameters["client_secret"] = clientSecret;
             }
@@ -84,18 +84,28 @@ namespace DotNetCoreOAuth2
             var request = new HttpRequestMessage(HttpMethod.Post, tokenRequestUrl);
 
             request.Content = content;
-            return request;
+            return (request, requestState.CustomState);
         }
 
+        /// <summary>
+        /// Generates code for code flow.
+        /// </summary>
+        /// <param name="scope"></param>
+        /// <param name="redirectUrl"></param>
+        /// <param name="customParameters"></param>
+        /// <param name="customState"></param>
+        /// <returns></returns>
         public async Task<Uri> GenerateUrlForCodeFlowAsync(
             string scope,
-            IDictionary<string, string>? customParameters)
+            string redirectUrl,
+            IDictionary<string, string>? customParameters,
+            string customState = null)
         {
             var requestData = _codeFlowHelper.GenerateNewRequestData();
             Dictionary<string, string> parameters = new Dictionary<string, string>()
             {
                 ["client_id"] = _clientId,
-                ["redirect_uri"] = _redirectUrl,
+                ["redirect_uri"] = redirectUrl,
                 ["response_type"] = "code",
                 ["scope"] = scope,
                 ["access_type"] = "offline",
@@ -117,12 +127,11 @@ namespace DotNetCoreOAuth2
             var authUrl = await _wellKnownConfigurationHandler.GetAuthorizationUrlAsync(_authority);
             var url = QueryHelpers.AddQueryString(authUrl, parameters);
 
-            requestData.AddRequestData(_authority, _redirectUrl);
+            requestData.AddRequestData(_authority, redirectUrl, customState);
             return new Uri(url);
         }
 
         public async Task<HttpRequestMessage> GenerateTokenRefreshRequestAsync(
-            string authority,
             Oauth2Token oauth2Token,
             string clientSecret)
         {
@@ -132,16 +141,32 @@ namespace DotNetCoreOAuth2
                 ["refresh_token"] = oauth2Token.RefreshToken,
                 ["client_id"] = _clientId,
             };
-            if (!String.IsNullOrEmpty(clientSecret))
+            if (!string.IsNullOrEmpty(clientSecret))
             {
                 parameters["client_secret"] = clientSecret;
             }
             var content = new FormUrlEncodedContent(parameters);
-            var tokenRequestUrl = await _wellKnownConfigurationHandler.GetTokenUrlAsync(authority);
+            var tokenRequestUrl = await _wellKnownConfigurationHandler.GetTokenUrlAsync(_authority);
             var request = new HttpRequestMessage(HttpMethod.Post, tokenRequestUrl);
 
             request.Content = content;
             return request;
+        }
+
+        public bool ValidateToken(string idToken)
+        {
+            return true;
+            //JwtSecurityTokenHandler jwtSecurityTokenHandler = new JwtSecurityTokenHandler();
+            //var validationParameters = new TokenValidationParameters()
+            //{
+            //    ValidateLifetime = false,
+            //    ValidateAudience = false,
+            //    ValidateIssuer = true,
+            //    ValidIssuer = _authority,
+            //    ValidAudience = "Sample",
+            //    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)) // The same key as the one that generate the token
+            //};
+            //jwtSecurityTokenHandler.ValidateToken(token.IdToken)
         }
     }
 }
