@@ -212,6 +212,18 @@ namespace WebAppTest.Controllers
             model.IdToken = token.IdToken;
             model.AccessToken = token.AccessToken;
 
+            JwtSecurityTokenHandler h = new JwtSecurityTokenHandler();
+            var jwtToken = h.ReadJwtToken(model.IdToken);
+            var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "email");
+            if (emailClaim == null)
+            {
+                model.TestResult = "ERROR: Received claim does not contains email";
+            }
+            else
+            {
+                model.EmailAddress = emailClaim.Value;
+            }
+
             return View("Index", model);
         }
 
@@ -260,20 +272,7 @@ namespace WebAppTest.Controllers
 
         private async Task<IActionResult> TestImapConnection(SampleIMAPModel model)
         {
-            JwtSecurityTokenHandler h = new JwtSecurityTokenHandler();
-            var jwtToken = h.ReadJwtToken(model.IdToken);
-
-            var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "email");
-            if (emailClaim == null)
-            {
-                model.TestResult = "ERROR: Received claim does not contains email";
-            }
-            else
-            {
-                model.EmailAddress = emailClaim.Value;
-                await ConnectToImap(model);
-            }
-
+            await ConnectToImap(model);
             return View("Index", model);
         }
         
