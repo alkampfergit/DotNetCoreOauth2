@@ -5,8 +5,8 @@ using MailKit.Net.Imap;
 using MailKit.Security;
 using Microsoft.Identity.Client;
 
-var clientId = "7dc85a6b-127b-45d2-ba1d-837f95aba0c7";
-var tenantId = "2aaa4b86-cc65-43c7-b348-89f4cb2b5c69";
+var clientId = "<clientId>";
+var tenantId = "<tenantId>";
 
 //var options = new PublicClientApplicationOptions
 //{
@@ -39,24 +39,25 @@ var tenantId = "2aaa4b86-cc65-43c7-b348-89f4cb2b5c69";
 //}
 
 var scopes = new string[] {
-                "email",
+                //"email",
                 //"offline_access",
-                "https://outlook.office.com/IMAP.AccessAsUser.All", // Only needed for IMAP
-				//"https://outlook.office.com/POP.AccessAsUser.All",  // Only needed for POP
-				//"https://outlook.office.com/SMTP.Send", // Only needed for SMTP
+	        "https://outlook.office365.com/.default",
+                //"https://outlook.office.com/IMAP.AccessAsUser.All", // Only needed for IMAP
+		//"https://outlook.office.com/POP.AccessAsUser.All",  // Only needed for POP
+		//"https://outlook.office.com/SMTP.Send", // Only needed for SMTP
                 //"https://graph.microsoft.com/.default",
             };
 
 var confidentialClientApplication = ConfidentialClientApplicationBuilder
         .Create(clientId)
-        .WithClientSecret("a8C8Q~~JWQc4U2jMmUiwZY9BduG5pUaa2E9h9dtQ")
-        .WithAuthority(new Uri("https://login.microsoftonline.com/" + tenantId + "/"))
+        .WithClientSecret("<client-secret>")
+        .WithAuthority(new Uri("https://login.microsoftonline.com/" + tenantId + "/v2.0"))
         .Build();
 
 var authenticationResult = await confidentialClientApplication.AcquireTokenForClient(scopes).ExecuteAsync();
 
 var authToken = authenticationResult;
-var oauth2 = new SaslMechanismOAuth2("worker@jarvisdemo.onmicrosoft.com", authToken.AccessToken);
+var oauth2 = new SaslMechanismOAuth2("<email address to access>", authToken.AccessToken);
 
 using (var client = new ImapClient(new ProtocolLogger("imapLog.txt")))
 {
