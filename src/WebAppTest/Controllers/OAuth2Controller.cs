@@ -1,13 +1,11 @@
 using DotNetCoreOAuth2;
 using MailKit;
 using MailKit.Net.Imap;
-using MailKit.Search;
 using MailKit.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Text;
-using WebAppTest.Support;
 
 namespace WebAppTest.Controllers
 {

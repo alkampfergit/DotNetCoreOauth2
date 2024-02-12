@@ -44,22 +44,24 @@ namespace WebAppTest.Controllers
 
         [Route("code-flow")]
         [HttpPost]
-        public async Task<IActionResult> CodeFlow()
+        public async Task<IActionResult> CodeFlow(CodeFlowDto dto)
         {
             OAuth2Client oAuth2Client = CreateOAuth2Client();
+
+            var clientScope = dto?.Scope ?? "openid email offline_access https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send";
 
             var relativeUrl = Url.Action("GetToken", "SampleIMAP")!;
             var redirectUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}/{relativeUrl.TrimStart('/')}";
             var customState = Guid.NewGuid().ToString();
             var codeChallengeUrl = await oAuth2Client.GenerateUrlForCodeFlowAsync(
-                "openid email offline_access https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send",
+                clientScope,
                 redirectUrl,
                 new Dictionary<string, string>(),
                 customState: customState);
 
             // In a real world, this will return a redirect to the code challenge url so that
             // the user will be immediately prompted with a login page.
-            var model = new ();
+            var model = new SampleIMAPModel();
             model.State = customState;
             model.LoginLink = codeChallengeUrl.AbsoluteUri;
             model.DebugLoginLink = DumpUrl(model.LoginLink);
