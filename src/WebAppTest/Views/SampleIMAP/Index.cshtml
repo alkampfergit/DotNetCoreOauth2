@@ -1,6 +1,16 @@
 ﻿@*
     For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 *@
+<style>
+  pre {
+    white-space: pre-wrap;       /* Since CSS 2.1 */
+    white-space: -moz-pre-wrap;  /* For Mozilla */
+    white-space: -pre-wrap;      /* For Opera 4-6 */
+    white-space: -o-pre-wrap;    /* For Opera 7 */
+    word-wrap: break-word;       /* For Internet Explorer 5.5+ */
+    max-width: 100%;             /* Specify a max-width if necessary */
+  }
+</style>
 @model WebAppTest.Controllers.Models.SampleIMAPModel
 @{
     @if (String.IsNullOrEmpty(Model.AccessToken))
@@ -72,7 +82,7 @@
         <h3>Token Request</h3>
         <pre>@Model.RequestTokenData</pre>
         <h3>Id Token</h3>
-        <pre>@Model.IdToken</pre>
+        <pre >@Model.IdToken</pre>
         <h3>Access Token</h3>
         <pre>@Model.AccessToken</pre>
         <h3>RefreshToken Token</h3>
