@@ -4,4 +4,9 @@
     {
         public string Email { get; set; }
     }
+
+    public class CodeFlowDto
+    {
+        public string? Scope { get; set; }
+    }
 }
