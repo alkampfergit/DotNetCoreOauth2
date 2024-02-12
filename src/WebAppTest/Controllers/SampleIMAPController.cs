@@ -8,9 +8,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net.Mail;
 using System.Text;
 using WebAppTest.Controllers.Models;
 
@@ -24,7 +22,7 @@ namespace WebAppTest.Controllers
         private readonly IOptionsMonitor<OAuth2Settings> _oauth2Settings;
         private readonly IHttpClientFactory _httpClientFactory;
 
-        private static Dictionary<string, SampleIMAPModel> InMemoryDb = new Dictionary<string, SampleIMAPModel>();
+        private static Dictionary<string, SampleIMAPModel> InMemoryDb = new ();
 
         public SampleIMAPController(
             CodeFlowHelper codeFlowHelper,
@@ -61,7 +59,7 @@ namespace WebAppTest.Controllers
 
             // In a real world, this will return a redirect to the code challenge url so that
             // the user will be immediately prompted with a login page.
-            var model = new SampleIMAPModel();
+            var model = new ();
             model.State = customState;
             model.LoginLink = codeChallengeUrl.AbsoluteUri;
             model.DebugLoginLink = DumpUrl(model.LoginLink);
@@ -82,7 +80,7 @@ namespace WebAppTest.Controllers
 
             var model = new SampleIMAPModel();
             await DumpTokenRequest(request, model);
-            
+
             var client = _httpClientFactory.CreateClient("default");
             var response = await client.SendAsync(request);
             if (!response.IsSuccessStatusCode)
@@ -227,7 +225,7 @@ namespace WebAppTest.Controllers
             return View("Index", model);
         }
 
-        private static async Task DumpTokenRequest(HttpRequestMessage  request, SampleIMAPModel model)
+        private static async Task DumpTokenRequest(HttpRequestMessage request, SampleIMAPModel model)
         {
             var content = await request.Content.ReadAsStringAsync();
             StringBuilder sb = new StringBuilder();
@@ -275,8 +273,8 @@ namespace WebAppTest.Controllers
             await ConnectToImap(model);
             return View("Index", model);
         }
-        
-        private static async Task ConnectToImap(SampleIMAPModel model, string email = null)
+
+        private static async Task ConnectToImap(SampleIMAPModel model, string? email = null)
         {
             email ??= model.EmailAddress;
             var oauth2_1 = new SaslMechanismOAuth2(email, model.AccessToken);
