@@ -36,7 +36,8 @@
 
         <h2>IMAP with code flow</h2>
         <form action="/sample-oauth2/code-flow" method="post">
-
+            <label for="scop">Scope:</label>
+            <input style="width: 800px" type="text" id="scope" name="scope" value="openid email offline_access https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send" />
             <input type="submit" value="Generate code flow link" />
         </form>
     }
