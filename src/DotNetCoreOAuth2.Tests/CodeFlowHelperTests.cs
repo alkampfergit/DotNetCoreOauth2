@@ -34,7 +34,8 @@
         {
             var original = _sut.GenerateNewRequestData();
             _sut.Clear(original.State);
-            Assert.IsNull(_sut.GetRequestData(original.State));
+            Assert.That(_sut.GetRequestData(original.State), Is.Null
+            );
         }
     }
 }
