@@ -41,7 +41,7 @@
         </div>
     }
 
-    @if (!String.IsNullOrEmpty(Model.AccessToken))
+    @if (Model.MSALHasAccount)
     {
         <div class="msal-section">
             <h1 class="msal-header">🧪 TEST Actual Token (MSAL)</h1>

@@ -8,6 +8,7 @@ using Microsoft.Identity.Client;
 using MimeKit;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Threading.Tasks;
 using WebAppTest.Controllers.Models;
 
 namespace WebAppTest.Controllers
@@ -31,10 +32,18 @@ namespace WebAppTest.Controllers
             _confidentialClientApplication = confidentialClientApplication;
         }
 
-        [HttpGet]
-        public IActionResult Index()
+        private async Task<MSALIMAPModel> CreateModelAsync()
         {
-            return View(new MSALIMAPModel());
+            var model = new MSALIMAPModel();
+            var accounts = await _confidentialClientApplication.GetAccountsAsync();
+            model.MSALHasAccount = accounts.Any();
+            return model;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Index()
+        {
+            return View(await CreateModelAsync());
         }
 
         [Route("code-flow")]
@@ -50,7 +59,7 @@ namespace WebAppTest.Controllers
                 .ExecuteAsync();
             // Build the authorization URL manually for MSAL
             var authorityUri = new Uri(_oauth2Settings.CurrentValue.Authority);
-            var model = new MSALIMAPModel();
+            var model = await CreateModelAsync();
             model.State = customState;
             model.LoginLink = authUrl.AbsoluteUri;
             model.DebugLoginLink = DumpUrl(model.LoginLink);
@@ -68,7 +77,7 @@ namespace WebAppTest.Controllers
                 return BadRequest($"OAuth error: {error}");
             }
 
-            var model = new MSALIMAPModel();
+            var model = await CreateModelAsync();
             try
             {
                 var result = await _confidentialClientApplication.AcquireTokenByAuthorizationCode(_scopes, code)
@@ -109,8 +118,7 @@ namespace WebAppTest.Controllers
         [HttpPost]
         public async Task<IActionResult> TestSmtp(TestSmtpDto dto)
         {
-
-            var model = new MSALIMAPModel();
+            var model = await CreateModelAsync();
             var accounts = await _confidentialClientApplication.GetAccountsAsync();
             var account = accounts.FirstOrDefault();
             var token = await _confidentialClientApplication.AcquireTokenSilent(

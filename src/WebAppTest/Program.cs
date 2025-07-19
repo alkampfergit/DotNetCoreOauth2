@@ -29,6 +29,9 @@ IConfidentialClientApplication cca = ConfidentialClientApplicationBuilder
     .WithRedirectUri("https://localhost:7044/msal-oauth2/get-token")
     .Build();
 
+//MsalTokenCacheHelper.EnableSerialization(cca.UserTokenCache);
+EncryptedMsalTokenCacheHelper.EnableSerialization(cca.UserTokenCache);
+
 builder.Services.AddSingleton(cca);
 
 builder.Services.AddHttpClient("default");
