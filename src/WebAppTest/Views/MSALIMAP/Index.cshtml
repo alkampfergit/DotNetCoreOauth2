@@ -34,31 +34,8 @@
     @if (String.IsNullOrEmpty(Model.AccessToken))
     {
         <div class="msal-section">
-            <h2 class="msal-header">IMAP with Client Credentials Flow (MSAL)</h2>
-            <form action="/msal-oauth2/imap-client-flow" method="post">
-                <label for="email">Email address:</label>
-                <input type="text" id="email" name="email" />
-                <input type="submit" value="Generate IMAP Client Credentials Flow (MSAL)" />
-            </form>
-        </div>
-
-        <div class="msal-section">
-            <h2 class="msal-header">SMTP with Client Credentials Flow (MSAL)</h2>
-            <form action="/msal-oauth2/smtp-client-flow" method="post">
-                <label for="from">From Email address:</label>
-                <input type="text" id="from" name="from" />
-                
-                <label for="to">To Email address:</label>
-                <input type="text" id="to" name="to" />
-                <input type="submit" value="Send mail with SMTP and Client Credentials Flow (MSAL)" />
-            </form>
-        </div>
-
-        <div class="msal-section">
             <h2 class="msal-header">IMAP with Authorization Code Flow (MSAL)</h2>
             <form action="/msal-oauth2/code-flow" method="post">
-                <label for="scope">Scope:</label>
-                <input style="width: 800px" type="text" id="scope" name="scope" value="openid email offline_access https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send" />
                 <input type="submit" value="Generate Authorization Code Flow Link (MSAL)" />
             </form>
         </div>
@@ -68,26 +45,10 @@
     {
         <div class="msal-section">
             <h1 class="msal-header">🧪 TEST Actual Token (MSAL)</h1>
-            <form action="/msal-oauth2/test-imap" method="post">
-                <input type="hidden" name="state" id="state" value="@Model.State" />
-                <input type="submit" value="Test IMAP Connection (MSAL)" />
-            </form>
-            <br />
             <form action="/msal-oauth2/test-smtp" method="post">
                 <input type="hidden" name="state" id="state2" value="@Model.State" />
-                <label for="to">To Email address:</label>
-                <input type="text" id="to" name="to" />
-                <input type="submit" value="Send mail with SMTP and actual token (MSAL)" />
+                <input type="submit" value="Acquire new token from MSAL" />
             </form>
-        </div>
-    }
-
-    @if (!String.IsNullOrEmpty(Model.TestResult))
-    {
-        <div class="msal-section">
-            <h2 class="msal-header">📋 Result of accessing IMAP/SMTP with MSAL XOAUTH2</h2>
-            <p><strong>Email:</strong> @Model.EmailAddress</p>
-            <p><strong>Result:</strong> @Model.TestResult</p>
         </div>
     }
 

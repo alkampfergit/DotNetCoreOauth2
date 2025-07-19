@@ -1,4 +1,5 @@
 using    DotNetCoreOAuth2;
+using Microsoft.Identity.Client;
 using WebAppTest;
 using WebAppTest.Support;
 
@@ -19,7 +20,16 @@ builder.Services.AddSingleton<CodeFlowHelper>();
 builder.Services.AddSingleton(
     sp => new WellKnownConfigurationHandler(sp.GetService<IHttpClientFactory>()!, "default"));
 
-ConfigurationHelper.ConfigureSetting<OAuth2Settings>(builder.Services, builder.Configuration, "OAuth2");
+var oauth2Settings = ConfigurationHelper.ConfigureSetting<OAuth2Settings>(builder.Services, builder.Configuration, "OAuth2");
+
+IConfidentialClientApplication cca = ConfidentialClientApplicationBuilder
+    .Create(oauth2Settings.ClientId)
+    .WithClientSecret(oauth2Settings.ClientSecret)
+    .WithAuthority(new Uri(oauth2Settings.Authority))
+    .WithRedirectUri("https://localhost:7044/msal-oauth2/get-token")
+    .Build();
+
+builder.Services.AddSingleton(cca);
 
 builder.Services.AddHttpClient("default");
 
